@@ -59,6 +59,6 @@ namespace SP_Taxonomy_client_test
 
                 //app.UseHttpsRedirection();
                 //app.UseMvc();
-            }
+        }
     }
 }

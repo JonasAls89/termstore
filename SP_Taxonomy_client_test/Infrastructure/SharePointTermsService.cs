@@ -105,98 +105,126 @@ namespace SP_Taxonomy_client_test.Infrastructure
 
         public async Task<IActionResult> AllTerms([FromQuery(Name = "termstore")] string _termstore, [FromQuery(Name = "termgroup")] string _termgroup, [FromQuery(Name = "termset")] string _termset)
         {
-            try
-            {
-                List<JObject> listTerms = new List<JObject>();
-                TaxonomySession taxonomySession = TaxonomySession.GetTaxonomySession(cc);
-                var termStores = taxonomySession.TermStores;
-                TermStore termStore = termStores.GetById(new Guid(_termstore));
-                var termGroups = termStore.Groups;
-                var termGroup = termGroups.GetByName(_termgroup);
-                var termSets = termGroup.TermSets;
-                cc.Load(termGroup, 
-                    group   => group.Id,
-                    group   => group.Name,
-                    group   => group.TermSets.Include(
-                        termset => termset.Id,
-                        termset => termset.Name,
-                        termset => termset.Terms.Include(
-                            term => term.Name,
-                            term => term.Description,
-                            term => term.Id,
-                            term => term.Labels,
-                            term => term.Terms.Include(
-                                childTerm => childTerm.Id,
-                                childTerm => childTerm.Name,
-                                childTerm => childTerm.Description,
-                                childTerm => childTerm.Labels
+            List<JObject> listTerms = new List<JObject>();
+            TaxonomySession taxonomySession = TaxonomySession.GetTaxonomySession(cc);
+            var termStores = taxonomySession.TermStores;
+            TermStore termStore = termStores.GetById(new Guid(_termstore));
+            //TermStore termStore = termStores.GetByName(_termstore);
+            var termGroups = termStore.Groups;
+            var termGroup = termGroups.GetByName(_termgroup);
+            var termSets = termGroup.TermSets;
+            //var termSet = termSets.GetByName("AEN Prosjekter");
+            
+            cc.Load(termGroup,
+                           group => group.Id,
+                           group => group.Name,
+                           group => group.TermSets.Include(
+                               set => set.Name,
+                               set => set.Id,
+                               set => set.Terms.Include(
+                                   term => term.Id,
+                                   term => term.Name,
+                                   term => term.Description,
+                                   term => term.Labels,
+                            term  => term.Terms.Include(
+                                term => term.Name,
+                                term => term.Description,
+                                term => term.Id,
+                                term=> term.Labels,
+                                term => term.Terms.Include(
+                                    term => term.Name,
+                                    term => term.Description,
+                                    term=> term.Id,
+                                    term => term.Labels,
+                                    term => term.Terms.Include(
+                                        term => term.Name,
+                                        term => term.Description,
+                                        term=> term.Id,
+                                        term=> term.Labels,
+                                        term => term.Terms.Include(
+                                            term => term.Name,
+                                            term => term.Description,
+                                            term=> term.Id,
+                                            term=> term.Labels,
+                                            term => term.Terms.Include(
+                                                term => term.Name,
+                                                term => term.Description,
+                                                term=> term.Id,
+                                                term=> term.Labels
+                                            )
+                                        
+                                    )
+                                )
                             )
-                    )
-                    ));
-                await cc.ExecuteQueryAsync();
-                for (int i = 0; i < termSets.Count; i++)
+                        )
+                       )
+                   )
+            );
+
+            await cc.ExecuteQueryAsync();
+            for (int i = 0; i < termSets.Count; i++)
+            {
+                if (termSets[i].Name.Equals(_termset))
                 {
-                    if (termSets[i].Name.Equals(_termset))
+                    TermSet termSet = termSets[i];
+                    var terms = termSet.Terms;
+                    foreach (var term in terms)
                     {
-                        TermSet termSet = termSets[i];
-                        var terms = termSet.Terms;
-                        foreach (var term in terms)
+                        var json = SharePointTermsHelper.JBaseTerm(term, "A");
+                        json.Add(new JProperty("termSetId", termSet.Id));
+                        json.Add(new JProperty("termSetName", termSet.Name));
+                        json.Add(new JProperty("termGroup", termGroup.Name));
+                        json.Add(new JProperty("termGroupId", termGroup.Id));
+
+                        JArray jsonChildTerms = new JArray();
+                        TermCollection childTerms = term.Terms;
+                        if (childTerms.Count > 0)
                         {
-                            var json = new JObject();
-                            json.Add(new JProperty("termSetId", termSet.Id));
-                            json.Add(new JProperty("termSetName", termSet.Name));
-                            json.Add(new JProperty("termGroup", termGroup.Name));
-                            json.Add(new JProperty("termGroupId", termGroup.Id));
-                            json.Add(new JProperty("termId", term.Id));
-                            json.Add(new JProperty("termName", term.Name));
-                            json.Add(new JProperty("termDescription", term.Description));
-                            var labels = term.Labels;
-                            var jsonLabels = new JArray();
-                            foreach (var label in labels)
-                            {
-                                var jsonChild = new JObject();
-                                jsonChild.Add(new JProperty("isDefaultForLanguage", label.IsDefaultForLanguage));
-                                jsonChild.Add(new JProperty("language", label.Language));
-                                jsonChild.Add(new JProperty("value", label.Value));
-                                jsonLabels.Add(new JObject(jsonChild));
-                            }
-                            json.Add(new JProperty("termLabels", jsonLabels));   
-                            var jsonChildTerms = new JArray();
-                            var childTerms = term.Terms;
                             foreach (var childTerm in childTerms)
                             {
-                                var jsonChildTerm = new JObject();
-                                jsonChildTerm.Add(new JProperty("childTermId", childTerm.Id));
-                                jsonChildTerm.Add(new JProperty("childTermName", childTerm.Name));
-                                jsonChildTerm.Add(new JProperty("childTermDescription", childTerm.Description));
-                                var childTermLabels = childTerm.Labels;
-                                var childTermLabelArray = new JArray();
-                                foreach (var childTermLabel in childTermLabels)
+                                JObject jsonChildTerm = SharePointTermsHelper.JBaseTerm(childTerm, "B");
+                                JArray jsonGrandChildTerms = new JArray();
+                                TermCollection grandChildTerms = childTerm.Terms;
+
+                                if (grandChildTerms.Count > 0)
                                 {
-                                    var jsonChild = new JObject();
-                                    jsonChild.Add(new JProperty("isDefaultForLanguage", childTermLabel.IsDefaultForLanguage));
-                                    jsonChild.Add(new JProperty("language", childTermLabel.Language));
-                                    jsonChild.Add(new JProperty("value", childTermLabel.Value));
-                                    childTermLabelArray.Add(new JObject(jsonChild));
+                                    foreach (var grandChildTerm in grandChildTerms)
+                                    {
+                                        JObject jsonGrandChildTerm = SharePointTermsHelper.JBaseTerm(grandChildTerm, "C");
+                                        JArray jsonDTerms = new JArray();
+                                        TermCollection dTerms = grandChildTerm.Terms;
+                                        
+                                        if (dTerms.Count > 0)
+                                        {
+                                            foreach (var dTerm in dTerms)
+                                            {
+                                                JObject jsonDTerm = SharePointTermsHelper.JBaseTerm(dTerm, "D");
+
+                                                
+                                                jsonDTerms.Add(new JObject(jsonDTerm));
+                                            }
+                                        }
+                                        jsonGrandChildTerms.Add(new JObject(jsonGrandChildTerm));
+
+
+                                    }
+                                    jsonChildTerm.Add(new JProperty("CChildTerms", jsonGrandChildTerms));
                                 }
-                                jsonChildTerm.Add(new JProperty("childTermLabels", childTermLabelArray));
                                 jsonChildTerms.Add(new JObject(jsonChildTerm));
                             }        
-                            json.Add(new JProperty("childTerms", jsonChildTerms));             
-                            listTerms.Add(json);
+                            json.Add(new JProperty("BTerms", jsonChildTerms));             
                         }
-                    }
-                    else
-                    {
-                        continue;
+                        
+                        listTerms.Add(json);
                     }
                 }
-                return new OkObjectResult(listTerms);
+                else
+                {
+                    continue;
+                }
             }
-            catch (System.Exception)
-            {
-                throw;
-            }
+
+            return new OkObjectResult(listTerms);
         }
         
 
@@ -568,7 +596,7 @@ namespace SP_Taxonomy_client_test.Infrastructure
         /// </summary>
         /// <param name="termList"></param>
         /// <returns></returns>
-        public async Task<ActionResult<IEnumerable<TermModel>>> CreateFromList(TermModel[]? termList)
+        public async Task<ActionResult<IEnumerable<TermModel>>> CreateFromList(TermModel[] termList)
         {
             
             TaxonomySession taxonomySession = TaxonomySession.GetTaxonomySession(cc);
@@ -838,7 +866,7 @@ namespace SP_Taxonomy_client_test.Infrastructure
         /// </summary>
         /// <param name="termList"></param>
         /// <returns></returns>
-        public async Task<ActionResult<IEnumerable<childFromParentModel>>>CreateFromParentList(childFromParentModel[]? termList)
+        public async Task<ActionResult<IEnumerable<childFromParentModel>>>CreateFromParentList(childFromParentModel[] termList)
         {
             TaxonomySession taxonomySession = TaxonomySession.GetTaxonomySession(cc);
             cc.Load(taxonomySession.TermStores);
@@ -964,7 +992,7 @@ namespace SP_Taxonomy_client_test.Infrastructure
         /// </summary>
         /// <param name="termList"></param>
         /// <returns></returns>
-        public async Task<ActionResult<IEnumerable<childFromChildModel>>>CreateFromChildList(childFromChildModel[]? termList)
+        public async Task<ActionResult<IEnumerable<childFromChildModel>>>CreateFromChildList(childFromChildModel[] termList)
         {
             TaxonomySession taxonomySession = TaxonomySession.GetTaxonomySession(cc);
             cc.Load(taxonomySession.TermStores);
@@ -1090,7 +1118,7 @@ namespace SP_Taxonomy_client_test.Infrastructure
         /// </summary>
         /// <param name="termList"></param>
         /// <returns></returns>
-        public async Task<ActionResult<IEnumerable<childFromChildrenModel>>>CreateFromChildChildList(childFromChildrenModel[]? termList)
+        public async Task<ActionResult<IEnumerable<childFromChildrenModel>>>CreateFromChildChildList(childFromChildrenModel[] termList)
         {
             TaxonomySession taxonomySession = TaxonomySession.GetTaxonomySession(cc);
             cc.Load(taxonomySession.TermStores);
@@ -1211,7 +1239,7 @@ namespace SP_Taxonomy_client_test.Infrastructure
             return termList;
         }
         
-        public async Task<ActionResult<IEnumerable<grandchildFromChildrenModel>>>CreateFromGrandchildList(grandchildFromChildrenModel[]? termList)
+        public async Task<ActionResult<IEnumerable<grandchildFromChildrenModel>>>CreateFromGrandchildList(grandchildFromChildrenModel[] termList)
         {
             TaxonomySession taxonomySession = TaxonomySession.GetTaxonomySession(cc);
             cc.Load(taxonomySession.TermStores);
@@ -1332,7 +1360,7 @@ namespace SP_Taxonomy_client_test.Infrastructure
             return termList;
         }
 
-        public async Task<ActionResult<IEnumerable<grandchildFromChildChildModel>>>CreateFromGrandchildChildList(grandchildFromChildChildModel[]? termList)
+        public async Task<ActionResult<IEnumerable<grandchildFromChildChildModel>>>CreateFromGrandchildChildList(grandchildFromChildChildModel[] termList)
         {
             TaxonomySession taxonomySession = TaxonomySession.GetTaxonomySession(cc);
             cc.Load(taxonomySession.TermStores);
@@ -1452,6 +1480,120 @@ namespace SP_Taxonomy_client_test.Infrastructure
             }
             return termList;
         }
+        public async Task<ActionResult<IEnumerable<TaxonomyModel>>> CreateTerm(TaxonomyModel[] listT)
+        {
+            foreach (var t in listT)
+            {
+                string termStoreGUID = t.Termstore;
+                var termGroupName = t.TermGroup;
+                var termSetName = t.Termset;
+                IDictionary<string, string> children = t.children;
+
+                TaxonomySession taxonomySession = TaxonomySession.GetTaxonomySession(cc);
+                
+                TermStore termStore = taxonomySession.TermStores.GetById(new Guid(termStoreGUID));
+                TermGroup termGroup = termStore.Groups.GetByName(termGroupName);
+                TermSet termSet = termGroup.TermSets.GetByName(termSetName);
+                Term term = termSet.Terms.GetByName(t.Term);
+                char c = 'a';
+                string termName = "";
+                string name = "";
+                
+
+                for (int j = 0; j < children.Count - 1; j++)
+                {
+                    //string id = c + "TermId";
+                    name = c + "TermName";
+                    termName = children[name];
+                    
+                    term = term.Terms.GetByName(termName);
+                    
+                    c++;
+                }
+
+                cc.Load(term, t => t.Name, t => t.Labels, t => t.Terms.Include(
+                    ct => ct.Name,
+                    ct => ct.Labels
+                ));
+                await cc.ExecuteQueryAsync();
+
+                name = c + "TermName";
+                termName = children[name];
+                if (term.Terms.Any(x => x.Name != children[name]))
+                {
+                    term = term.CreateTerm(termName, t.Lcid, Guid.NewGuid());
+                    if (t.Labels != null)
+                    {
+                        foreach (var label in t.Labels) 
+                        {
+                            term.CreateLabel(label.Value, label.Language, label.IsDefaultForLanguage);
+                        }
+                    }
+                }
+                else
+                {
+                    //term = term.Terms.GetByName(termName);
+                    var terms = term.Terms;
+                    for (int j = 0; j < terms.Count; j++)
+                    {
+                        if (terms[j].Name.Equals(termName))
+                            term = terms[j];
+                        else
+                            continue;
+                    }
+                    //cc.Load(term, t => t.Name, t => t.Labels);
+                    //await cc.ExecuteQueryAsync();
+                    if (t.Labels != null)
+                    {
+                        foreach (var label in t.Labels)
+                        {
+                            if (!term.Labels.Any(x => x.Value == label.Value))
+                            {
+                                term.CreateLabel(label.Value, label.Language, label.IsDefaultForLanguage);
+                                if (label.IsDefaultForLanguage == true)
+                                {
+                                    term.Name = label.Value;
+                                }
+                                
+                            }
+                        }
+                    }
+
+                }
+
+                
+                if (t.Description != null)
+                    term.SetDescription(t.Description, t.Lcid);
+                
+
+                if (t.LocalCustomProperty != null) 
+                {
+                    foreach (var customLocalProperty in t.LocalCustomProperty) 
+                    {
+                        term.SetLocalCustomProperty(customLocalProperty.Key, customLocalProperty.Value);
+                    }
+                }
+                if (t.CustomProperty != null) 
+                {
+                    foreach (var customProperty in t.CustomProperty) 
+                    {
+                        term.SetCustomProperty(customProperty.Key, customProperty.Value);
+                    }
+                }
+                
+                
+                
+                Console.WriteLine("Writing term : " + t.Name);
+                termStore.CommitAll();
+                cc.ExecuteQuery();
+                
+            }
+            
+           
+
+
+            return new NoContentResult();
+        }
 
     }
 }

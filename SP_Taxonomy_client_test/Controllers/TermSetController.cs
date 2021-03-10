@@ -34,9 +34,69 @@ namespace SP_Taxonomy_client_test.Controllers
             return await this._spTermsService.GetAllTerms(_termset);
         }
 
+        [HttpPost]
+        [Produces("application/json")]
+        [Consumes("application/json")]
+        /// <summary>
+        /// Create new term or label(s)
+        /// </summary>
+        /// <remarks>
+        /// Sample request:
+        ///
+        ///     POST /api/CreateTerm
+        ///     [{
+	    ///         "TermStore":"c2bcfd2c8e7f4226a89b21a5d2a0d6d6",
+	    ///         "TermGroup":"Sesam",
+	    ///         "Termset":"AEN Prosjekter",
+	    ///         "Term":"Childterming for Pipe",
+	    ///         "Lcid": 1033,
+	    ///         "children": {
+	    ///         	"aTermName": "another child",
+	    ///         	"bTermName": "another child in child",
+	    ///         	"cTermName": "Sverres tre",
+	    ///         	"dTermName": "Sverres tre2",
+	    ///         	"eTermName": "Sverres tre5"
+	    ///         },
+	    ///         "Labels": [
+	    ///         	{
+	    ///         	"isDefaultForLanguage": false,
+	    ///         	"language": 1033,
+	    ///         	"value": "Test23"
+	    ///         	},
+	    ///         	{
+	    ///         	"isDefaultForLanguage": false,
+	    ///         	"language": 1033,
+	    ///         	"value": "Test21231111111"
+	    ///         	},
+	    ///         	{
+	    ///         	"isDefaultForLanguage": false,
+	    ///         	"language": 1033,
+	    ///         	"value": "Test2123123123"
+	    ///         	}
+	    ///         ]
+        ///     }]
+        ///     
+        /// </remarks>
+        /// <param name="param">New document parameters</param>
+        /// <returns></returns>
+        public async Task<ActionResult<IEnumerable<TaxonomyModel>>> CreateTerm(TaxonomyModel[] listT)
+        {
+            return await this._spTermsService.CreateTerm(listT);
+        }
+
+
         // GET api/termset d
         [HttpGet("terms")]
         [Produces("application/json")]
+        /// <summary>
+        /// Fetch all Terms
+        /// </summary>
+        /// <remarks>
+        /// Sample request:
+        ///
+        ///     GET api/getallterms?termstore=<termstore GUID>&termgroup=<termgroup name>&termset=<termset name>
+        ///     
+        /// </remarks>
         public async Task<IActionResult> GetAllTerms([FromQuery(Name = "termstore")] string _termstore, [FromQuery(Name = "termgroup")] string _termgroup, [FromQuery(Name = "termset")] string _termset)
         {
             return await this._spTermsService.AllTerms(_termstore, _termgroup, _termset);

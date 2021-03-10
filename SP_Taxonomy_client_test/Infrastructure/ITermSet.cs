@@ -25,5 +25,6 @@ namespace SP_Taxonomy_client_test.Infrastructure
 
         public List<TermStoreModel> GetTermStores();
         public List<TermGroupModel> GetTermStoreGroups(string id);
+        public Task<ActionResult<IEnumerable<TaxonomyModel>>> CreateTerm(TaxonomyModel[] listT);
     }
 }
